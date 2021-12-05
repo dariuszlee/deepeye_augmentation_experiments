@@ -1,30 +1,30 @@
-import joblib
-import numpy as np
-import time
-import pandas as pd
-import random
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-from sklearn import metrics
-from scipy import interpolate
 import os
-from Model import deepeyedentification_tf2
-from Model import configuration
-from sklearn.preprocessing import LabelEncoder
+import random
+
+import matplotlib.pyplot as plt
+import numpy as np
 import tensorflow as tf
+from scipy import interpolate
+from scipy.spatial import distance
+from sklearn import metrics
+from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras.utils import to_categorical
+from tqdm import tqdm
+
+from Model import configuration
+from Model import deepeyedentification_tf2
 
 
-
-def avg_fnr_fpr_curve(fprs, tprs, label, plot_random=False,
-                title = None, plot_statistics = False,
-                loc = 'best', plot_legend = True,
-                plot_points = 10000, ncol=1,
-                bbox_to_anchor=None,
-                starting_point = None,
-                fontsize = 14, xscale = None,
-                setting = 'verification'):
-
+def avg_fnr_fpr_curve(
+    fprs, tprs, label, plot_random=False,
+    title=None, plot_statistics=False,
+    loc='best', plot_legend=True,
+    plot_points=10000, ncol=1,
+    bbox_to_anchor=None,
+    starting_point=None,
+    fontsize=14, xscale=None,
+    setting='verification',
+):
     """
     Plot average roc curve from multiple fpr and tpr arrays of multiple cv-folds
 
@@ -51,7 +51,6 @@ def avg_fnr_fpr_curve(fprs, tprs, label, plot_random=False,
     aucs = []
     for i in range(0, len(fprs)):
         fpr = fprs[i]
-        tpr = tprs[i]
         fnr = 1 - tprs[i]
 
         tprs_list.append(interpolate.interp1d(fpr, fnr))
@@ -59,58 +58,69 @@ def avg_fnr_fpr_curve(fprs, tprs, label, plot_random=False,
     aucs = np.array(aucs)
     x = np.linspace(0, 1, plot_points)
     if starting_point is not None:
-        x = x[x > starting_point]    
-        
+        x = x[x > starting_point]
+
     if plot_random:
         y = 1 - x
-        plt.plot(x,y, color='grey', linestyle='dashed',
-                 label='random guessing')
+        plt.plot(
+            x, y, color='grey', linestyle='dashed',
+            label='random guessing',
+        )
 
-    # plot average and std error of those roc curves:        
+    # plot average and std error of those roc curves:
     ys = np.vstack([f(x) for f in tprs_list])
     ys_mean = ys.mean(axis=0)
     ys_std = ys.std(axis=0) / np.sqrt(len(fprs))
     cur_label = label
     if plot_statistics:
-        cur_label += ' (AUC={} $\pm$ {})'.format(np.round(np.mean(aucs), 4),
-                                             np.round(np.std(aucs), 4))
+        cur_label += r' (AUC={} $\pm$ {})'.format(
+            np.round(np.mean(aucs), 4),
+            np.round(np.std(aucs), 4),
+        )
     plt.plot(x, ys_mean, label=cur_label)
     plt.fill_between(x, ys_mean - ys_std, ys_mean + ys_std, alpha=0.2)
     if plot_legend:
         if bbox_to_anchor is None:
-            plt.legend(loc=loc, ncol=ncol,fontsize=fontsize)
+            plt.legend(loc=loc, ncol=ncol, fontsize=fontsize)
         else:
-            plt.legend(loc=loc, ncol=ncol, bbox_to_anchor = bbox_to_anchor,fontsize=fontsize)
-    
-    if setting=="verification":
+            plt.legend(
+                loc=loc, ncol=ncol,
+                bbox_to_anchor=bbox_to_anchor, fontsize=fontsize,
+            )
+
+    if setting == 'verification':
         plt.xlabel('FMR', fontsize=fontsize)
         plt.ylabel('FNMR', fontsize=fontsize)
-    elif setting=="identification":
+    elif setting == 'identification':
         plt.xlabel('FPIR', fontsize=fontsize)
         plt.ylabel('FNIR', fontsize=fontsize)
 
     plt.grid('on')
     if title is not None:
         plt.title(title)
-        
+
     return aucs
 
 
-def get_indicies(enrolled_users,
-                impostors,
-                enrollment_sessions,
-                test_sessions,
-                data_user,
-                data_sessions,
-                data_seqIds,
-                seconds_per_session = None,
-                random_state = 42):
-    
+def get_indicies(
+    enrolled_users,
+    impostors,
+    enrollment_sessions,
+    test_sessions,
+    data_user,
+    data_sessions,
+    data_seqIds,
+    seconds_per_session=None,
+    random_state=42,
+):
+
     idx_enrollment = np.zeros((data_user.shape[0], 3), dtype=bool)
     if data_seqIds is None:
         num_enrollment = 12
-        idx_enrollment[:, 0] = np.logical_and(np.isin(data_user, enrolled_users),
-                                                      np.isin(data_sessions, enrollment_sessions[0:1]))
+        idx_enrollment[:, 0] = np.logical_and(
+            np.isin(data_user, enrolled_users),
+            np.isin(data_sessions, enrollment_sessions[0:1]),
+        )
         pos_ids = np.where(idx_enrollment[:, 0])[0]
         random.shuffle(pos_ids)
         use_ids = pos_ids[0:num_enrollment]
@@ -124,58 +134,105 @@ def get_indicies(enrolled_users,
             # select random seconds from enrollment
             for en_i in range(len(enrollment_sessions)):
                 for us_i in range(len(enrolled_users)):
-                    cur_user_ids = np.where(np.logical_and(np.isin(data_user,enrolled_users[us_i]),
-                                                                  np.isin(data_sessions,enrollment_sessions[en_i:en_i+1])))[0]
+                    cur_user_ids = np.where(
+                        np.logical_and(
+                            np.isin(data_user, enrolled_users[us_i]),
+                            np.isin(
+                                data_sessions,
+                                enrollment_sessions[en_i:en_i+1],
+                            ),
+                        ),
+                    )[0]
                     random.shuffle(cur_user_ids)
                     cur_user_use_ids = cur_user_ids[0:seconds_per_session]
                     idx_enrollment[cur_user_use_ids, :] = True
         else:
             # 1 enrollment session: 12 trials, 2 enrollment sessions: 6+6 trials, 3 enrollment sessions: 4+4+4 trials
-            seqIds_different_configs = [109, 61, 13, 97, 49, 3, 133, 85, 37, 121, 73, 25]
+            seqIds_different_configs = [
+                109, 61, 13,
+                97, 49, 3, 133, 85, 37, 121, 73, 25,
+            ]
 
             # one enrollment session with 12 unique trial configs:
-            idx_enrollment[:, 0] = np.logical_and(np.isin(data_user, enrolled_users),
-                                                  np.logical_and(
-                                                      np.isin(data_sessions, enrollment_sessions[0:1]),
-                                                      np.isin(data_seqIds, seqIds_different_configs)))
+            idx_enrollment[:, 0] = np.logical_and(
+                np.isin(data_user, enrolled_users),
+                np.logical_and(
+                    np.isin(data_sessions, enrollment_sessions[0:1]),
+                    np.isin(data_seqIds, seqIds_different_configs),
+                ),
+            )
             # two enrollment session with 12 unique trial configs:
-            idx_enrollment[:, 1] = np.logical_and(np.isin(data_user, enrolled_users),
-                                                  np.logical_or(
-                                                      np.logical_and(
-                                                          np.isin(data_sessions, enrollment_sessions[0:1]),
-                                                          np.isin(data_seqIds,
-                                                                  seqIds_different_configs[0:6])),
-                                                      np.logical_and(
-                                                          np.isin(data_sessions, enrollment_sessions[1:2]),
-                                                          np.isin(data_seqIds,
-                                                                  seqIds_different_configs[6:12]))))
+            idx_enrollment[:, 1] = np.logical_and(
+                np.isin(data_user, enrolled_users),
+                np.logical_or(
+                    np.logical_and(
+                        np.isin(data_sessions, enrollment_sessions[0:1]),
+                        np.isin(
+                            data_seqIds,
+                            seqIds_different_configs[0:6],
+                        ),
+                    ),
+                    np.logical_and(
+                        np.isin(data_sessions, enrollment_sessions[1:2]),
+                        np.isin(
+                            data_seqIds,
+                            seqIds_different_configs[6:12],
+                        ),
+                    ),
+                ),
+            )
             # three enrollment session with 12 unique trial configs:
-            idx_enrollment[:, 2] = np.logical_and(np.isin(data_user, enrolled_users),
-                                                  np.logical_or(
-                                                      np.logical_or(
-                                                          np.logical_and(
-                                                              np.isin(data_sessions,
-                                                                      enrollment_sessions[0:1]),
-                                                              np.isin(data_seqIds,
-                                                                      seqIds_different_configs[0:4])),
-                                                          np.logical_and(
-                                                              np.isin(data_sessions,
-                                                                      enrollment_sessions[1:2]),
-                                                              np.isin(data_seqIds,
-                                                                      seqIds_different_configs[4:8]))),
-                                                      np.logical_and(
-                                                          np.isin(data_sessions, enrollment_sessions[2:3]),
-                                                          np.isin(data_seqIds,
-                                                                  seqIds_different_configs[8:12]))))
-    
-    test_idx = np.logical_and(np.logical_or(np.isin(data_user, enrolled_users),np.isin(data_user, impostors)),
-                                  np.isin(data_sessions, test_sessions))
-    
+            idx_enrollment[:, 2] = np.logical_and(
+                np.isin(data_user, enrolled_users),
+                np.logical_or(
+                    np.logical_or(
+                        np.logical_and(
+                            np.isin(
+                                data_sessions,
+                                enrollment_sessions[0:1],
+                            ),
+                            np.isin(
+                                data_seqIds,
+                                seqIds_different_configs[0:4],
+                            ),
+                        ),
+                        np.logical_and(
+                            np.isin(
+                                data_sessions,
+                                enrollment_sessions[1:2],
+                            ),
+                            np.isin(
+                                data_seqIds,
+                                seqIds_different_configs[4:8],
+                            ),
+                        ),
+                    ),
+                    np.logical_and(
+                        np.isin(data_sessions, enrollment_sessions[2:3]),
+                        np.isin(
+                            data_seqIds,
+                            seqIds_different_configs[8:12],
+                        ),
+                    ),
+                ),
+            )
+
+    test_idx = np.logical_and(
+        np.logical_or(
+            np.isin(data_user, enrolled_users),
+            np.isin(data_user, impostors),
+        ),
+        np.isin(data_sessions, test_sessions),
+    )
+
     return (idx_enrollment, test_idx)
 
-def get_user_similarity_scores_and_labels(cosine_distances, y_enrollment, y_test, enrollment_users, impostors, window_size=1,
-                                         sim_to_enroll = 'min',
-                                         verbose = 0):
+
+def get_user_similarity_scores_and_labels(
+    cosine_distances, y_enrollment, y_test, enrollment_users, impostors, window_size=1,
+    sim_to_enroll='min',
+    verbose=0,
+):
     """
 
     :param cosine_distances: cosine distances of all pairs of enrollment and test instances, n_test x n_enrollment
@@ -191,11 +248,12 @@ def get_user_similarity_scores_and_labels(cosine_distances, y_enrollment, y_test
         disable = True
     else:
         disable = False
-        
-    scores =[]      # similarity score between two users, based on number of test instances specified by window size
-    labels = []     # true labels: test person is 0 (impostor),1 (correct), 2 (confused)
 
-    for test_user in tqdm(np.unique(y_test),disable=disable):
+    scores = []      # similarity score between two users, based on number of test instances specified by window size
+    # true labels: test person is 0 (impostor),1 (correct), 2 (confused)
+    labels = []
+
+    for test_user in tqdm(np.unique(y_test), disable=disable):
         idx_test_user = y_test == test_user
 
         # iterate over each possible window start position for test user
@@ -213,13 +271,20 @@ def get_user_similarity_scores_and_labels(cosine_distances, y_enrollment, y_test
                     idx_enrolled_user = y_enrollment == enrolled_user
 
                     # calculate aggregated distance of instances in window with each enrolled user seperately
-                    dists_test_user_window_enrolled_user = dists_test_user_window[:, idx_enrolled_user]
+                    dists_test_user_window_enrolled_user = dists_test_user_window[
+                        :,
+                        idx_enrolled_user
+                    ]
 
                     # aggregate distances for each test sequence to all enrolled sequences by taking the minimum distance
                     if sim_to_enroll == 'min':
-                        dists_test_sequences_of_window = np.min(dists_test_user_window_enrolled_user, axis=1)  # n_test_sequences x 1 array
+                        dists_test_sequences_of_window = np.min(
+                            dists_test_user_window_enrolled_user, axis=1,
+                        )  # n_test_sequences x 1 array
                     elif sim_to_enroll == 'mean':
-                        dists_test_sequences_of_window = np.mean(dists_test_user_window_enrolled_user, axis=1)  # n_test_sequences x 1 array
+                        dists_test_sequences_of_window = np.mean(
+                            dists_test_user_window_enrolled_user, axis=1,
+                        )  # n_test_sequences x 1 array
 
                     # aggregate min distances of all test sequences in this window by taking the mean
                     window_mean_dist = np.mean(dists_test_sequences_of_window)
@@ -236,7 +301,9 @@ def get_user_similarity_scores_and_labels(cosine_distances, y_enrollment, y_test
                         else:
                             label = 2  # test user of this window is another enrolled user
                     else:
-                        print('user {} is neither enrolled user nor impostor'.format(test_user))
+                        print(
+                            f'user {test_user} is neither enrolled user nor impostor',
+                        )
                         label = -1  # should never happen
 
                     scores.append(1-window_mean_dist)
@@ -253,13 +320,20 @@ def get_user_similarity_scores_and_labels(cosine_distances, y_enrollment, y_test
                 idx_enrolled_user = y_enrollment == enrolled_user
 
                 # calculate aggregated distance of instances in window with each enrolled user seperately
-                dists_test_user_window_enrolled_user = dists_test_user_window[:, idx_enrolled_user]
+                dists_test_user_window_enrolled_user = dists_test_user_window[
+                    :,
+                    idx_enrolled_user
+                ]
 
                 # aggregate distances for each test sequence to all enrolled sequences by taking the minimum distance
                 if sim_to_enroll == 'min':
-                    dists_test_sequences_of_window = np.min(dists_test_user_window_enrolled_user, axis=1)  # n_test_sequences x 1 array
+                    dists_test_sequences_of_window = np.min(
+                        dists_test_user_window_enrolled_user, axis=1,
+                    )  # n_test_sequences x 1 array
                 elif sim_to_enroll == 'mean':
-                    dists_test_sequences_of_window = np.mean(dists_test_user_window_enrolled_user, axis=1)  # n_test_sequences x 1 array
+                    dists_test_sequences_of_window = np.mean(
+                        dists_test_user_window_enrolled_user, axis=1,
+                    )  # n_test_sequences x 1 array
 
                 # aggregate min distances of all test sequences in this window by taking the mean
                 window_mean_dist = np.mean(dists_test_sequences_of_window)
@@ -276,7 +350,9 @@ def get_user_similarity_scores_and_labels(cosine_distances, y_enrollment, y_test
                     else:
                         label = 2  # test user of this window is another enrolled user
                 else:
-                    print('user {} is neither enrolled user nor impostor'.format(test_user))
+                    print(
+                        f'user {test_user} is neither enrolled user nor impostor',
+                    )
                     label = -1  # should never happen
 
                 scores.append(1-window_mean_dist)
@@ -285,120 +361,135 @@ def get_user_similarity_scores_and_labels(cosine_distances, y_enrollment, y_test
     return np.array(scores), np.array(labels)
 
 
-def get_scores_and_labels_from_raw(test_embeddings,Y_test,Y_columns,
-                                    window_sizes,
-                                    n_train_users = 0,
-                                    n_enrolled_users = 20,
-                                    n_impostors = 5,
-                                    n_enrollment_sessions = 3,
-                                    n_test_sessions = 1,
-                                    test_user = None,
-                                    user_test_sessions = None,
-                                    enrollment_sessions = None,
-                                    test_sessions = None,
-                                    verbose = 1,
-                                    random_state = None,
-                                    seconds_per_session = None):
-                                    
+def get_scores_and_labels_from_raw(
+    test_embeddings, Y_test, Y_columns,
+    window_sizes,
+    n_train_users=0,
+    n_enrolled_users=20,
+    n_impostors=5,
+    n_enrollment_sessions=3,
+    n_test_sessions=1,
+    test_user=None,
+    user_test_sessions=None,
+    enrollment_sessions=None,
+    test_sessions=None,
+    verbose=1,
+    random_state=None,
+    seconds_per_session=None,
+):
+
     if random_state is not None:
         random.seed(random_state)
-        
+
     score_dicts = dict()
     label_dicts = dict()
-    
+
     if Y_test is None:
         test_seqIds = None
     else:
-        test_user = Y_test[:,Y_columns['subId']]
-        test_sessions = Y_test[:,Y_columns['session']]
+        test_user = Y_test[:, Y_columns['subId']]
+        test_sessions = Y_test[:, Y_columns['session']]
         try:
-            test_seqIds = Y_test[:,Y_columns['seqId']]
+            test_seqIds = Y_test[:, Y_columns['seqId']]
         except:
             test_seqIds = None
-    #print('number of different users: ' + str(len(np.unique(test_user))))
+    # print('number of different users: ' + str(len(np.unique(test_user))))
 
     users = list(np.unique(test_user))
     if Y_test is None:
-        idx_test_session = np.isin(user_test_sessions,test_sessions)
+        idx_test_session = np.isin(user_test_sessions, test_sessions)
         users = list(np.unique(test_user[idx_test_session]))
-    
+
     # shuffle users
     random.shuffle(users)
-    
-    
-    #n_train_users = 0
-    #n_enrolled_users = 20
-    #n_impostors = 5
-    #n_enrollment_sessions = 3
-    #n_test_sessions = 1
+
+    # n_train_users = 0
+    # n_enrolled_users = 20
+    # n_impostors = 5
+    # n_enrollment_sessions = 3
+    # n_test_sessions = 1
     enrolled_users = users[n_train_users:n_train_users+n_enrolled_users]
-    impostors = users[n_train_users + n_enrolled_users: n_train_users + n_enrolled_users + n_impostors]
-    all_test_users = enrolled_users + impostors
-    
-    
-    
+    impostors = users[
+        n_train_users +
+        n_enrolled_users: n_train_users + n_enrolled_users + n_impostors
+    ]
+
     # JuDo setting
     if Y_test is not None:
         sessions = np.unique(test_sessions)
-        train_sessions = sessions
         random.shuffle(sessions)
         cur_enrollment_sessions = sessions[0: n_enrollment_sessions]
-        cur_test_sessions = sessions[n_enrollment_sessions: n_enrollment_sessions + n_test_sessions]
+        cur_test_sessions = sessions[
+            n_enrollment_sessions:
+            n_enrollment_sessions + n_test_sessions
+        ]
     else:
         random.shuffle(enrollment_sessions)
         random.shuffle(test_sessions)
         cur_enrollment_sessions = enrollment_sessions[0: n_enrollment_sessions]
-        cur_test_sessions       = test_sessions[0:n_test_sessions]
-    
+        cur_test_sessions = test_sessions[0:n_test_sessions]
+
     if verbose > 0:
-        print('enrolled_users: ' + str(enrolled_users) + ' enroll-sessions: ' +\
-            str(cur_enrollment_sessions) + ' test-sessions: ' + str(cur_test_sessions))
-    
-    
-    (idx_enrollment, test_idx) = get_indicies(enrolled_users,
-                        impostors,
-                        cur_enrollment_sessions,
-                        cur_test_sessions,
-                        test_user,
-                        test_sessions,
-                        test_seqIds,
-                        seconds_per_session = seconds_per_session,
-                        random_state = random_state)
-    
-    #print('number of enrollment seconds: ' + str(np.sum(idx_enrollment[:,n_enrollment_sessions-1])))
-    
-    test_feature_vectors = test_embeddings[test_idx,:]
-    enrollment_feature_vectors = test_embeddings[idx_enrollment[:,n_enrollment_sessions-1],:]        
-    
+        print(
+            f'enrolled_users: {enrolled_users} enroll-sessions: {cur_enrollment_sessions} test-sessions: {cur_test_sessions}',
+        )
+
+    (idx_enrollment, test_idx) = get_indicies(
+        enrolled_users,
+        impostors,
+        cur_enrollment_sessions,
+        cur_test_sessions,
+        test_user,
+        test_sessions,
+        test_seqIds,
+        seconds_per_session=seconds_per_session,
+        random_state=random_state,
+    )
+
+    # print('number of enrollment seconds: ' + str(np.sum(idx_enrollment[:,n_enrollment_sessions-1])))
+
+    test_feature_vectors = test_embeddings[test_idx, :]
+    enrollment_feature_vectors = test_embeddings[
+        idx_enrollment[
+            :,
+            n_enrollment_sessions-1
+        ], :
+    ]
+
     # labels for embedding feature vectors:
-    y_enrollment_user = test_user[idx_enrollment[:,n_enrollment_sessions-1]]
+    y_enrollment_user = test_user[idx_enrollment[:, n_enrollment_sessions-1]]
     y_test_user = test_user[test_idx]
 
-    combined_data = np.vstack([enrollment_feature_vectors,
-                              test_feature_vectors])
 
-    y_enrollment_session = test_sessions[idx_enrollment[:,n_enrollment_sessions-1]]
-    y_test_session = test_sessions[test_idx]
-    
-    from scipy.spatial import distance
-    dists = distance.cdist(test_feature_vectors, enrollment_feature_vectors, metric='cosine')
-    
+    dists = distance.cdist(
+        test_feature_vectors,
+        enrollment_feature_vectors, metric='cosine',
+    )
+
     for window_size in window_sizes:
-        #print('Calculate scores for window size = {}'.format(str(window_size)))
-        scores, labels = get_user_similarity_scores_and_labels(dists,
-                                                               y_enrollment_user,
-                                                               y_test_user,
-                                                               enrolled_users,
-                                                               impostors,
-                                                               window_size=window_size,
-                                                               verbose = verbose)
-        cur_key = str(window_size)            
+        # print('Calculate scores for window size = {}'.format(str(window_size)))
+        scores, labels = get_user_similarity_scores_and_labels(
+            dists,
+            y_enrollment_user,
+            y_test_user,
+            enrolled_users,
+            impostors,
+            window_size=window_size,
+            verbose=verbose,
+        )
+        cur_key = str(window_size)
         score_dicts[cur_key] = scores.tolist()
         label_dicts[cur_key] = labels.tolist()
     return (score_dicts, label_dicts)
-    
-    
-def evaluate_create_test_embeddings(X_train,Y_train,X_test,Y_test,Y_columns):
+
+
+def evaluate_create_test_embeddings(
+    X_train,
+    Y_train,
+    X_test,
+    Y_test,
+    Y_columns,
+):
     # load best hyperparameters into model configuration
     best_json_path = os.path.join('configs', 'config.json')
     conf = configuration.load_config_json(best_json_path)
@@ -406,11 +497,15 @@ def evaluate_create_test_embeddings(X_train,Y_train,X_test,Y_test,Y_columns):
     # encode label
     le = LabelEncoder()
     le.fit(Y_train[:, Y_columns['subId']])
-    Y_train[:, Y_columns['subId']] = le.transform(Y_train[:, Y_columns['subId']])
+    Y_train[:, Y_columns['subId']] = le.transform(
+        Y_train[:, Y_columns['subId']],
+    )
 
     # one-hot-encode user ids:
     n_train_users_f = len(np.unique(Y_train[:, Y_columns['subId']]))
-    y_train = to_categorical(Y_train[:, Y_columns['subId']], num_classes=n_train_users_f)
+    y_train = to_categorical(
+        Y_train[:, Y_columns['subId']], num_classes=n_train_users_f,
+    )
 
     # SET UP PARAMS FOR NN
 
@@ -418,32 +513,34 @@ def evaluate_create_test_embeddings(X_train,Y_train,X_test,Y_test,Y_columns):
     m = np.mean(X_train[:, :, [0, 1]], axis=None)
     sd = np.std(X_train[:, :, [0, 1]], axis=None)
 
-    conf.subnets[1].normalization = conf.subnets[1].normalization._replace(mean=m, std=sd)
+    conf.subnets[1].normalization = conf.subnets[1].normalization._replace(
+        mean=m, std=sd,
+    )
 
     seq_len = X_train.shape[1]
     n_channels = X_train.shape[2]
     n_classes = y_train.shape[1]
 
-
-    X_diffs_train = X_train[:,:,[0,1]] - X_train[:,:,[2,3]]
+    X_diffs_train = X_train[:, :, [0, 1]] - X_train[:, :, [2, 3]]
     mean_vel_diff = np.nanmean(X_diffs_train)
     std_vel_diff = np.nanstd(X_diffs_train)
 
-    X_diffs_test = X_test[:,:,[0,1]] - X_test[:,:,[2,3]]
-
+    X_diffs_test = X_test[:, :, [0, 1]] - X_test[:, :, [2, 3]]
 
     # TRAIN NN
     # clear tensorflow session
     tf.keras.backend.clear_session()
 
-    deepeye = deepeyedentification_tf2.DeepEyedentification2Diffs(conf.subnets[0],
-                                                          conf.subnets[1],
-                                                          conf,
-                                                          seq_len=seq_len,
-                                                          channels=n_channels,
-                                                          n_classes=n_classes,
-                                                          zscore_mean_vel_diffs=mean_vel_diff,
-                                                          zscore_std_vel_diffs=std_vel_diff)
+    deepeye = deepeyedentification_tf2.DeepEyedentification2Diffs(
+        conf.subnets[0],
+        conf.subnets[1],
+        conf,
+        seq_len=seq_len,
+        channels=n_channels,
+        n_classes=n_classes,
+        zscore_mean_vel_diffs=mean_vel_diff,
+        zscore_std_vel_diffs=std_vel_diff,
+    )
 
     from sklearn.model_selection import StratifiedKFold
     skf = StratifiedKFold(n_splits=4, shuffle=True, random_state=42)
@@ -453,23 +550,41 @@ def evaluate_create_test_embeddings(X_train,Y_train,X_test,Y_test,Y_columns):
     print('Training model on train data ...')
 
     # train the model
-    cur_hist = deepeye.train(X_train, X_diffs_train, y_train, train_idx=train_index, validation_idx=val_index)
+    cur_hist = deepeye.train(
+        X_train, X_diffs_train, y_train,
+        train_idx=train_index, validation_idx=val_index,
+    )
     print('done.')
-    
+
     from tensorflow.keras import Model
     print('Creating embedding for test data ...')
-    embedding_fast_subnet = Model(inputs=deepeye.fast_subnet.input,
-                                  outputs=deepeye.fast_subnet.get_layer('fast_d3').output)
-    embedding_slow_subnet = Model(inputs=deepeye.slow_subnet.input,
-                                  outputs=deepeye.slow_subnet.get_layer('slow_d3').output)
-    embedding_deepeye = Model(inputs=deepeye.model.input, outputs=deepeye.model.get_layer('deepeye_a2').output)
+    embedding_fast_subnet = Model(
+        inputs=deepeye.fast_subnet.input,
+        outputs=deepeye.fast_subnet.get_layer('fast_d3').output,
+    )
+    embedding_slow_subnet = Model(
+        inputs=deepeye.slow_subnet.input,
+        outputs=deepeye.slow_subnet.get_layer('slow_d3').output,
+    )
+    embedding_deepeye = Model(
+        inputs=deepeye.model.input,
+        outputs=deepeye.model.get_layer('deepeye_a2').output,
+    )
 
-    embeddings_fast_subnet_all = embedding_fast_subnet.predict([X_test, X_diffs_test])
-    embeddings_slow_subnet_all = embedding_slow_subnet.predict([X_test, X_diffs_test])
-    embeddings_deepeye_all = embedding_deepeye.predict([[X_test,X_diffs_test],[X_test,X_diffs_test]])
+    embeddings_fast_subnet_all = embedding_fast_subnet.predict(
+        [X_test, X_diffs_test],
+    )
+    embeddings_slow_subnet_all = embedding_slow_subnet.predict(
+        [X_test, X_diffs_test],
+    )
+    embeddings_deepeye_all = embedding_deepeye.predict(
+        [[X_test, X_diffs_test], [X_test, X_diffs_test]],
+    )
 
-    embeddings_concatenated_all = np.hstack([embeddings_fast_subnet_all,
-                                             embeddings_slow_subnet_all,
-                                             embeddings_deepeye_all])
+    embeddings_concatenated_all = np.hstack([
+        embeddings_fast_subnet_all,
+        embeddings_slow_subnet_all,
+        embeddings_deepeye_all,
+    ])
     print('done.')
     return embeddings_concatenated_all

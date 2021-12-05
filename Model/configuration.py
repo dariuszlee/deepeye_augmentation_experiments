@@ -1,9 +1,12 @@
 # configuration of deepeyedentification network and its subnets
 from collections import namedtuple
 
+
 class Config_merged_net:
-    def __init__(self, model_name, subnet1, subnet2, Ndense_merged, learning_rate_merged, batch_size_merged=64,
-                 epochs=100):
+    def __init__(
+        self, model_name, subnet1, subnet2, Ndense_merged, learning_rate_merged, batch_size_merged=64,
+        epochs=100,
+    ):
         # learning_rate_merged:for merged layers
         # batch_size_merged: batch_size for merged layers
         # epochs: number of training epochs for each of the models
@@ -16,9 +19,11 @@ class Config_merged_net:
 
 
 class Config_subnet:
-    def __init__(self, subnet_name, transform, normalization, filters, kernel, strides, dense, learning_rate,
-                 pl_size=[2, 2, 2, 2, 2, 2, 2, 2, 2], pl_strides=[2, 2, 2, 2, 2, 2, 2, 2, 2], batch_size=64,
-                 input_idx=[0, 1]):
+    def __init__(
+        self, subnet_name, transform, normalization, filters, kernel, strides, dense, learning_rate,
+        pl_size=[2, 2, 2, 2, 2, 2, 2, 2, 2], pl_strides=[2, 2, 2, 2, 2, 2, 2, 2, 2], batch_size=64,
+        input_idx=[0, 1],
+    ):
         # transform: None or tuple containing the name of the transformation ('tanh' or 'clip') and the respecitve parameters
         # normalization:  normalization ('zscore' or 'minmax' or None) to be applied within each split
         # filters: list containing number of filters for each convolutional layer
@@ -30,24 +35,42 @@ class Config_subnet:
         # learning_rate: learning rate for pretraining
         # batch_size: batch size for pretraining
         # input_idx: list of input feature indeces along third dimension of X. [0,1]: velocity; [2,3]: acceleration
-        assert (transform in ('None', None) or transform[0] in ('tanh', 'clip'))
+        assert (
+            transform in ('None', None)
+            or transform[0] in ('tanh', 'clip')
+        )
         if transform in ('None', None):
             self.transform = None
         elif transform[0] == 'tanh':
-            TanhTransformation = namedtuple('TanhTransformation', 'transformation factor')
-            self.transform = TanhTransformation(transformation='tanh', factor=transform[1])
+            TanhTransformation = namedtuple(
+                'TanhTransformation', 'transformation factor',
+            )
+            self.transform = TanhTransformation(
+                transformation='tanh', factor=transform[1],
+            )
         elif transform[0] == 'clip':
-            ClipTransformation = namedtuple('ClipTransformation', 'transformation threshold')
-            self.transform = ClipTransformation(transformation='clip', threshold=transform[1])
+            ClipTransformation = namedtuple(
+                'ClipTransformation', 'transformation threshold',
+            )
+            self.transform = ClipTransformation(
+                transformation='clip', threshold=transform[1],
+            )
         else:
             self.transform = None
 
-        assert (normalization in ('None', None) or normalization[0] in ('zscore', 'minmax'))
+        assert (
+            normalization in ('None', None)
+            or normalization[0] in ('zscore', 'minmax')
+        )
         if normalization in ('None', None):
             self.normalization = None
         else:
-            Normalization = namedtuple('Normalization', 'normalization mean std')
-            self.normalization = Normalization(normalization=normalization[0], mean=None, std=None)
+            Normalization = namedtuple(
+                'Normalization', 'normalization mean std',
+            )
+            self.normalization = Normalization(
+                normalization=normalization[0], mean=None, std=None,
+            )
         self.filters = filters
         self.kernel = kernel
         self.strides = strides
@@ -62,33 +85,37 @@ class Config_subnet:
 
 def load_config_json(config_json_file):
     import json
-    fp = open(config_json_file, 'r')
+    fp = open(config_json_file)
     fp_str = fp.read()
     fp.close()
     config_json = json.loads(fp_str)
     conf_sub1 = Config_subnet(
-            subnet_name = config_json['name_sub1'],
-            transform = config_json['transform_sub1'],
-            normalization = config_json['normalization_sub1'],
-            filters = config_json['filters_sub1'],
-            kernel = config_json['kernel_sub1'],
-            strides = config_json['strides_sub1'],
-            dense = config_json['dense_sub1'],
-            learning_rate = config_json['learning_rate_sub1'])
-    conf_sub2 = Config_subnet(subnet_name = config_json['name_sub2'],
-            transform = config_json['transform_sub2'],
-            normalization = config_json['normalization_sub2'],
-            filters = config_json['filters_sub2'],
-            kernel = config_json['kernel_sub2'],
-            strides = config_json['strides_sub2'],
-            dense = config_json['dense_sub2'],
-            learning_rate = config_json['learning_rate_sub2'])
+        subnet_name=config_json['name_sub1'],
+        transform=config_json['transform_sub1'],
+        normalization=config_json['normalization_sub1'],
+        filters=config_json['filters_sub1'],
+        kernel=config_json['kernel_sub1'],
+        strides=config_json['strides_sub1'],
+        dense=config_json['dense_sub1'],
+        learning_rate=config_json['learning_rate_sub1'],
+    )
+    conf_sub2 = Config_subnet(
+        subnet_name=config_json['name_sub2'],
+        transform=config_json['transform_sub2'],
+        normalization=config_json['normalization_sub2'],
+        filters=config_json['filters_sub2'],
+        kernel=config_json['kernel_sub2'],
+        strides=config_json['strides_sub2'],
+        dense=config_json['dense_sub2'],
+        learning_rate=config_json['learning_rate_sub2'],
+    )
     conf = Config_merged_net(
-            model_name = config_json['name_merged'],
-            subnet1 = conf_sub1,
-            subnet2 = conf_sub2,
-            Ndense_merged = config_json['Ndense_merged'],
-            learning_rate_merged = config_json['learning_rate_merged'])
+        model_name=config_json['name_merged'],
+        subnet1=conf_sub1,
+        subnet2=conf_sub2,
+        Ndense_merged=config_json['Ndense_merged'],
+        learning_rate_merged=config_json['learning_rate_merged'],
+    )
     return conf
 
 
@@ -100,57 +127,51 @@ def load_config_from_dataframe(config_df):
     n_layers_block3 = 2
 
     conf_sub1 = Config_subnet(
-        subnet_name="optimal_slow_subnet",
-        transform=["tanh", 20.0],
+        subnet_name='optimal_slow_subnet',
+        transform=['tanh', 20.0],
         normalization=None,
 
-        filters=list([int(config_df["slow_block{}_f".format(i)]) for i in
-                 [1] * n_layers_block1 + [2] * n_layers_block2 + [3] * n_layers_block3]),
+        filters=list(
+            int(config_df[f'slow_block{i}_f']) for i in
+            [1] * n_layers_block1 + [2] * n_layers_block2 + [3] * n_layers_block3
+        ),
 
-        kernel=list([int(config_df["slow_block{}_k".format(i)]) for i in
-                [1] * n_layers_block1 + [2] * n_layers_block2 + [3] * n_layers_block3]),
+        kernel=list(
+            int(config_df[f'slow_block{i}_k']) for i in
+            [1] * n_layers_block1 + [2] * n_layers_block2 + [3] * n_layers_block3
+        ),
 
         # strides are not tuned:
         strides=[1, 1, 1, 1, 1, 1, 1, 1, 1],
 
-        dense=[int(config_df["slow_dense_{}".format(i)]) for i in [1, 2, 3]],
+        dense=[int(config_df[f'slow_dense_{i}']) for i in [1, 2, 3]],
 
         # learning rate is not tuned:
-        learning_rate=0.001)
+        learning_rate=0.001,
+    )
 
-    conf_sub2 = Config_subnet(subnet_name="optimal_fast_subnet",
-                              transform=["clip", 0.04],
-                              normalization=["zscore"],
-                              filters=[int(config_df["fast_block{}_f".format(i)]) for i in
-                                       [1] * n_layers_block1 + [2] * n_layers_block2 + [3] * n_layers_block3],
-                              kernel=[int(config_df["fast_block{}_k".format(i)]) for i in
-                                      [1] * n_layers_block1 + [2] * n_layers_block2 + [3] * n_layers_block3],
-                              strides=[1, 1, 1, 1, 1, 1, 1, 1, 1],
-                              dense=[int(config_df["fast_dense_{}".format(i)]) for i in [1, 2, 3]],
-                              learning_rate=0.001)
+    conf_sub2 = Config_subnet(
+        subnet_name='optimal_fast_subnet',
+        transform=['clip', 0.04],
+        normalization=['zscore'],
+        filters=[
+            int(config_df[f'fast_block{i}_f']) for i in
+            [1] * n_layers_block1 + [2] * n_layers_block2 + [3] * n_layers_block3
+        ],
+        kernel=[
+            int(config_df[f'fast_block{i}_k']) for i in
+            [1] * n_layers_block1 + [2] * n_layers_block2 + [3] * n_layers_block3
+        ],
+        strides=[1, 1, 1, 1, 1, 1, 1, 1, 1],
+        dense=[int(config_df[f'fast_dense_{i}']) for i in [1, 2, 3]],
+        learning_rate=0.001,
+    )
     conf = Config_merged_net(
-        model_name="optimal_merged",
+        model_name='optimal_merged',
         subnet1=conf_sub1,
         subnet2=conf_sub2,
-        Ndense_merged=[config_df["merged_dense_{}".format(i)] for i in [1, 2]],
-        learning_rate_merged= 0.00011)
+        Ndense_merged=[config_df[f'merged_dense_{i}'] for i in [1, 2]],
+        learning_rate_merged=0.00011,
+    )
 
     return conf
-
-
-def read_param_combis_in_dataframe(path_parameter_combination_csv):
-    import pandas as pd
-    # n_filters_slow
-    # kernel_sizes_slow
-    # n_dense_slow
-
-    # n_filters_fast
-    # kernel_sizes_slow
-    # n_dense_slow
-
-    # n_dense_merged
-
-    # read csv into df with above column names, values are lists
-    param_combi_df = pd.read_csv(path_parameter_combination_csv)
-
-    return 1
