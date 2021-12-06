@@ -403,11 +403,6 @@ def get_scores_and_labels_from_raw(
     # shuffle users
     random.shuffle(users)
 
-    # n_train_users = 0
-    # n_enrolled_users = 20
-    # n_impostors = 5
-    # n_enrollment_sessions = 3
-    # n_test_sessions = 1
     enrolled_users = users[n_train_users:n_train_users+n_enrolled_users]
     impostors = users[
         n_train_users +
@@ -446,7 +441,6 @@ def get_scores_and_labels_from_raw(
         random_state=random_state,
     )
 
-    # print('number of enrollment seconds: ' + str(np.sum(idx_enrollment[:,n_enrollment_sessions-1])))
 
     test_feature_vectors = test_embeddings[test_idx, :]
     enrollment_feature_vectors = test_embeddings[
@@ -467,7 +461,6 @@ def get_scores_and_labels_from_raw(
     )
 
     for window_size in window_sizes:
-        # print('Calculate scores for window size = {}'.format(str(window_size)))
         scores, labels = get_user_similarity_scores_and_labels(
             dists,
             y_enrollment_user,

@@ -511,7 +511,6 @@ class DeepEyedentification2Diffs():
         fast_d3 = Dense(
             config.dense[2], activation='relu', name='fast_d3',
         )(fast_n11)
-        # fast_d3 = Dense(256, activation='relu', name='fast_d3')(fast_n11)
         fast_n12 = BatchNormalization(axis=-1, name='fast_n12')(fast_d3)
 
         fast_identity_output = Dense(
