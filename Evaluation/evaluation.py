@@ -14,6 +14,8 @@ from tqdm import tqdm
 from Model import configuration
 from Model import deepeyedentification_tf2
 
+model_conf = {"learning_rate_merged": 0.00011, "kernel_sub2": [9, 9, 9, 5, 5, 5, 5, 3, 3], "normalization_sub2": ["zscore"], "kernel_sub1": [9, 9, 9, 5, 5, 5, 5, 3, 3], "transform_sub2": ["clip", 0.01], "filters_sub1": [128, 128, 128, 256, 256, 256, 256, 256, 256], "dense_sub1": [256, 256, 128], "learning_rate_sub2": 0.001, "normalization_sub1": 'None', "name_sub1": "optimal_slow_subnet", "learning_rate_sub1": 0.001, "filters_sub2": [32, 32, 32, 512, 512, 512, 512, 512, 512], "name_merged": "optimal_merged", "Ndense_merged": [256, 128], "dense_sub2": [256, 256, 128], "strides_sub1": [1, 1, 1, 1, 1, 1, 1, 1, 1], "transform_sub1": ["tanh", 20.0], "name_sub2": "optimal_fast_subnet", "strides_sub2": [1, 1, 1, 1, 1, 1, 1, 1, 1]}
+
 
 def avg_fnr_fpr_curve(
     fprs, tprs, label, plot_random=False,
@@ -483,9 +485,10 @@ def evaluate_create_test_embeddings(
     Y_test,
     Y_columns,
 ):
-    # load best hyperparameters into model configuration
-    best_json_path = os.path.join('configs', 'config.json')
-    conf = configuration.load_config_json(best_json_path)
+    # load  model configuration
+    conf = configuration.load_config(model_conf)
+
+    
 
     # encode label
     le = LabelEncoder()

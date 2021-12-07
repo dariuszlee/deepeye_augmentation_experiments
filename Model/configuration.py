@@ -83,12 +83,7 @@ class Config_subnet:
         self.subnet_name = subnet_name
 
 
-def load_config_json(config_json_file):
-    import json
-    fp = open(config_json_file)
-    fp_str = fp.read()
-    fp.close()
-    config_json = json.loads(fp_str)
+def load_config(config_json):
     conf_sub1 = Config_subnet(
         subnet_name=config_json['name_sub1'],
         transform=config_json['transform_sub1'],
@@ -117,6 +112,15 @@ def load_config_json(config_json_file):
         learning_rate_merged=config_json['learning_rate_merged'],
     )
     return conf
+
+def load_config_json(config_json_file):
+    import json
+    fp = open(config_json_file)
+    fp_str = fp.read()
+    fp.close()
+    config_json = json.loads(fp_str)
+    return load_config(config_json)
+    
 
 
 def load_config_from_dataframe(config_df):
