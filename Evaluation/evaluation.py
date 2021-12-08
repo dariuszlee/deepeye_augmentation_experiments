@@ -14,7 +14,8 @@ from tqdm import tqdm
 from Model import configuration
 from Model import deepeyedentification_tf2
 
-model_conf = {"learning_rate_merged": 0.00011, "kernel_sub2": [9, 9, 9, 5, 5, 5, 5, 3, 3], "normalization_sub2": ["zscore"], "kernel_sub1": [9, 9, 9, 5, 5, 5, 5, 3, 3], "transform_sub2": ["clip", 0.01], "filters_sub1": [128, 128, 128, 256, 256, 256, 256, 256, 256], "dense_sub1": [256, 256, 128], "learning_rate_sub2": 0.001, "normalization_sub1": 'None', "name_sub1": "optimal_slow_subnet", "learning_rate_sub1": 0.001, "filters_sub2": [32, 32, 32, 512, 512, 512, 512, 512, 512], "name_merged": "optimal_merged", "Ndense_merged": [256, 128], "dense_sub2": [256, 256, 128], "strides_sub1": [1, 1, 1, 1, 1, 1, 1, 1, 1], "transform_sub1": ["tanh", 20.0], "name_sub2": "optimal_fast_subnet", "strides_sub2": [1, 1, 1, 1, 1, 1, 1, 1, 1]}
+model_conf = {"learning_rate_merged": 0.00011, "kernel_sub2": [9, 9, 9, 5, 5, 5, 5, 3, 3], "normalization_sub2": ["zscore"], "kernel_sub1": [9, 9, 9, 5, 5, 5, 5, 3, 3], "transform_sub2": ["clip", 0.01], "filters_sub1": [128, 128, 128, 256, 256, 256, 256, 256, 256], "dense_sub1": [256, 256, 128], "learning_rate_sub2": 0.001, "normalization_sub1": 'None', "name_sub1": "optimal_slow_subnet", "learning_rate_sub1": 0.001, "filters_sub2": [32, 32, 32, 512, 512, 512, 512, 512, 512], "name_merged": "optimal_merged", "Ndense_merged": [256, 128], "dense_sub2": [256, 256, 128], "strides_sub1": [1, 1, 1, 1, 1, 1, 1, 1, 1], "transform_sub1": ["tanh", 20.0], "name_sub2": "optimal_fast_subnet", "strides_sub2": [1, 1, 1, 1, 1, 1, 1, 1, 1],
+"batch_size":64}
 
 
 def avg_fnr_fpr_curve(
@@ -484,7 +485,14 @@ def evaluate_create_test_embeddings(
     X_test,
     Y_test,
     Y_columns,
-):
+    batch_size = 64):
+    
+    # clear tensorflow session
+    tf.keras.backend.clear_session()
+    
+    if batch_size != -1:
+        model_conf['batch_size'] = batch_size
+    
     # load  model configuration
     conf = configuration.load_config(model_conf)
 
@@ -524,9 +532,6 @@ def evaluate_create_test_embeddings(
     X_diffs_test = X_test[:, :, [0, 1]] - X_test[:, :, [2, 3]]
 
     # TRAIN NN
-    # clear tensorflow session
-    tf.keras.backend.clear_session()
-
     deepeye = deepeyedentification_tf2.DeepEyedentification2Diffs(
         conf.subnets[0],
         conf.subnets[1],

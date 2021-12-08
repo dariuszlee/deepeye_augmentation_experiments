@@ -1,6 +1,7 @@
 import os
 
 import tensorflow
+import tensorflow as tf
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import Activation
 from tensorflow.keras.layers import AveragePooling1D
@@ -49,6 +50,7 @@ class DeepEyedentification2Diffs():
 
         # pretrain slow and fast subnet independently
         if not pretrained_weights_slow_path:
+            tf.keras.backend.clear_session()
             print('Train slow subnet...')
             self.slow_subnet.fit(
                 [X_vel[train_idx, :], X_diff_vel[train_idx, :]], y[train_idx, :],
@@ -78,6 +80,7 @@ class DeepEyedentification2Diffs():
             )
 
         if not pretrained_weights_fast_path:
+            tf.keras.backend.clear_session()
             print('Train fast subnet...')
             self.fast_subnet.fit(
                 [X_vel[train_idx, :], X_diff_vel[train_idx, :]], y[train_idx, :],
@@ -104,7 +107,8 @@ class DeepEyedentification2Diffs():
                 'weights_{}.h5'.format('fast_subnet'),
                 by_name=True,
             )
-
+        
+        tf.keras.backend.clear_session()
         # load weights of pre-trained subnets into merged net
         for i in range(len(self.slow_subnet.layers)):
             for j in range(len(self.model.layers)):

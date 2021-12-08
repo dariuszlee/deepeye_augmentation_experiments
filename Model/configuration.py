@@ -93,6 +93,7 @@ def load_config(config_json):
         strides=config_json['strides_sub1'],
         dense=config_json['dense_sub1'],
         learning_rate=config_json['learning_rate_sub1'],
+        batch_size = config_json['batch_size']
     )
     conf_sub2 = Config_subnet(
         subnet_name=config_json['name_sub2'],
@@ -103,6 +104,7 @@ def load_config(config_json):
         strides=config_json['strides_sub2'],
         dense=config_json['dense_sub2'],
         learning_rate=config_json['learning_rate_sub2'],
+        batch_size = config_json['batch_size']
     )
     conf = Config_merged_net(
         model_name=config_json['name_merged'],
@@ -110,6 +112,7 @@ def load_config(config_json):
         subnet2=conf_sub2,
         Ndense_merged=config_json['Ndense_merged'],
         learning_rate_merged=config_json['learning_rate_merged'],
+        batch_size_merged = config_json['batch_size']
     )
     return conf
 
