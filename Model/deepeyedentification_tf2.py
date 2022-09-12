@@ -2,6 +2,7 @@ import os
 
 import tensorflow
 import tensorflow as tf
+from tensorflow.keras.initializers import HeNormal
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import Activation
 from tensorflow.keras.layers import AveragePooling1D
@@ -15,6 +16,7 @@ from tensorflow.keras.layers import Layer
 from tensorflow.keras.models import clone_model
 from tensorflow.keras.models import Model
 
+GLOBAL_SEED=42
 
 class DeepEyedentification2Diffs():
 
@@ -255,7 +257,7 @@ class DeepEyedentification2Diffs():
         slow_c1 = Conv1D(
             filters=config.filters[0], kernel_size=config.kernel[0], strides=config.strides[0],
             padding='same',
-            kernel_initializer='he_normal',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED),
             name='slow_c1',
         )(slow_concat1)
 
@@ -267,7 +269,7 @@ class DeepEyedentification2Diffs():
 
         slow_c2 = Conv1D(
             filters=config.filters[1], kernel_size=config.kernel[1], strides=config.strides[1], padding='same',
-            kernel_initializer='he_normal', name='slow_c2',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='slow_c2',
         )(slow_n1)
         slow_a2 = Activation('relu', name='slow_a2')(slow_c2)
         slow_n2 = BatchNormalization(axis=-1, name='slow_n2')(slow_a2)
@@ -277,7 +279,7 @@ class DeepEyedentification2Diffs():
 
         slow_c3 = Conv1D(
             filters=config.filters[2], kernel_size=config.kernel[2], strides=config.strides[2], padding='same',
-            kernel_initializer='he_normal', name='slow_c3',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='slow_c3',
         )(slow_p2)
         slow_a3 = Activation('relu', name='slow_a3')(slow_c3)
         slow_n3 = BatchNormalization(axis=-1, name='slow_n3')(slow_a3)
@@ -287,7 +289,7 @@ class DeepEyedentification2Diffs():
 
         slow_c4 = Conv1D(
             filters=config.filters[3], kernel_size=config.kernel[3], strides=config.strides[3], padding='same',
-            kernel_initializer='he_normal', name='slow_c4',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='slow_c4',
         )(slow_p3)
         slow_a4 = Activation('relu', name='slow_a4')(slow_c4)
         slow_n4 = BatchNormalization(axis=-1, name='slow_n4')(slow_a4)
@@ -297,7 +299,7 @@ class DeepEyedentification2Diffs():
 
         slow_c5 = Conv1D(
             filters=config.filters[4], kernel_size=config.kernel[4], strides=config.strides[4], padding='same',
-            kernel_initializer='he_normal', name='slow_c5',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='slow_c5',
         )(slow_p4)
         slow_a5 = Activation('relu', name='slow_a5')(slow_c5)
         slow_n5 = BatchNormalization(axis=-1, name='slow_n5')(slow_a5)
@@ -307,7 +309,7 @@ class DeepEyedentification2Diffs():
 
         slow_c6 = Conv1D(
             filters=config.filters[5], kernel_size=config.kernel[5], strides=config.strides[5], padding='same',
-            kernel_initializer='he_normal', name='slow_c6',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='slow_c6',
         )(slow_p5)
         slow_a6 = Activation('relu', name='slow_a6')(slow_c6)
         slow_n6 = BatchNormalization(axis=-1, name='slow_n6')(slow_a6)
@@ -317,7 +319,7 @@ class DeepEyedentification2Diffs():
 
         slow_c7 = Conv1D(
             filters=config.filters[6], kernel_size=config.kernel[6], strides=config.strides[6], padding='same',
-            kernel_initializer='he_normal', name='slow_c7',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='slow_c7',
         )(slow_p6)
         slow_a7 = Activation('relu', name='slow_a7')(slow_c7)
         slow_n7 = BatchNormalization(axis=-1, name='slow_n7')(slow_a7)
@@ -327,7 +329,7 @@ class DeepEyedentification2Diffs():
 
         slow_c8 = Conv1D(
             filters=config.filters[7], kernel_size=config.kernel[7], strides=config.strides[7], padding='same',
-            kernel_initializer='he_normal', name='slow_c8',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='slow_c8',
         )(slow_p7)
         slow_a8 = Activation('relu', name='slow_a8')(slow_c8)
         slow_n8 = BatchNormalization(axis=-1, name='slow_n8')(slow_a8)
@@ -337,7 +339,7 @@ class DeepEyedentification2Diffs():
 
         slow_c9 = Conv1D(
             filters=config.filters[8], kernel_size=config.kernel[8], strides=config.strides[8], padding='same',
-            kernel_initializer='he_normal', name='slow_c9',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='slow_c9',
         )(slow_p8)
         slow_a9 = Activation('relu', name='slow_a9')(slow_c9)
         slow_n9 = BatchNormalization(axis=-1, name='slow_n9')(slow_a9)
@@ -411,7 +413,7 @@ class DeepEyedentification2Diffs():
         fast_c1 = Conv1D(
             filters=config.filters[0], kernel_size=config.kernel[0], strides=config.strides[0],
             padding='same',
-            kernel_initializer='he_normal', name='fast_c1',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='fast_c1',
         )(fast_concat1)
 
         fast_a1 = Activation('relu', name='fast_a1')(fast_c1)
@@ -422,7 +424,7 @@ class DeepEyedentification2Diffs():
 
         fast_c2 = Conv1D(
             filters=config.filters[1], kernel_size=config.kernel[1], strides=config.strides[1], padding='same',
-            kernel_initializer='he_normal', name='fast_c2',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='fast_c2',
         )(fast_n1)
         fast_a2 = Activation('relu', name='fast_a2')(fast_c2)
         fast_n2 = BatchNormalization(axis=-1, name='fast_n2')(fast_a2)
@@ -432,7 +434,7 @@ class DeepEyedentification2Diffs():
 
         fast_c3 = Conv1D(
             filters=config.filters[2], kernel_size=config.kernel[2], strides=config.strides[2], padding='same',
-            kernel_initializer='he_normal', name='fast_c3',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='fast_c3',
         )(fast_p2)
         fast_a3 = Activation('relu', name='fast_a3')(fast_c3)
         fast_n3 = BatchNormalization(axis=-1, name='fast_n3')(fast_a3)
@@ -442,7 +444,7 @@ class DeepEyedentification2Diffs():
 
         fast_c4 = Conv1D(
             filters=config.filters[3], kernel_size=config.kernel[3], strides=config.strides[3], padding='same',
-            kernel_initializer='he_normal', name='fast_c4',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='fast_c4',
         )(fast_p3)
         fast_a4 = Activation('relu', name='fast_a4')(fast_c4)
         fast_n4 = BatchNormalization(axis=-1, name='fast_n4')(fast_a4)
@@ -452,7 +454,7 @@ class DeepEyedentification2Diffs():
 
         fast_c5 = Conv1D(
             filters=config.filters[4], kernel_size=config.kernel[4], strides=config.strides[4], padding='same',
-            kernel_initializer='he_normal', name='fast_c5',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='fast_c5',
         )(fast_p4)
         fast_a5 = Activation('relu', name='fast_a5')(fast_c5)
         fast_n5 = BatchNormalization(axis=-1, name='fast_n5')(fast_a5)
@@ -462,7 +464,7 @@ class DeepEyedentification2Diffs():
 
         fast_c6 = Conv1D(
             filters=config.filters[5], kernel_size=config.kernel[5], strides=config.strides[5], padding='same',
-            kernel_initializer='he_normal', name='fast_c6',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='fast_c6',
         )(fast_p5)
         fast_a6 = Activation('relu', name='fast_a6')(fast_c6)
         fast_n6 = BatchNormalization(axis=-1, name='fast_n6')(fast_a6)
@@ -472,7 +474,7 @@ class DeepEyedentification2Diffs():
 
         fast_c7 = Conv1D(
             filters=config.filters[6], kernel_size=config.kernel[6], strides=config.strides[6], padding='same',
-            kernel_initializer='he_normal', name='fast_c7',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='fast_c7',
         )(fast_p6)
         fast_a7 = Activation('relu', name='fast_a7')(fast_c7)
         fast_n7 = BatchNormalization(axis=-1, name='fast_n7')(fast_a7)
@@ -482,7 +484,7 @@ class DeepEyedentification2Diffs():
 
         fast_c8 = Conv1D(
             filters=config.filters[7], kernel_size=config.kernel[7], strides=config.strides[7], padding='same',
-            kernel_initializer='he_normal', name='fast_c8',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='fast_c8',
         )(fast_p7)
         fast_a8 = Activation('relu', name='fast_a8')(fast_c8)
         fast_n8 = BatchNormalization(axis=-1, name='fast_n8')(fast_a8)
@@ -492,7 +494,7 @@ class DeepEyedentification2Diffs():
 
         fast_c9 = Conv1D(
             filters=config.filters[8], kernel_size=config.kernel[8], strides=config.strides[8], padding='same',
-            kernel_initializer='he_normal', name='fast_c9',
+            kernel_initializer=HeNormal(seed=GLOBAL_SEED), name='fast_c9',
         )(fast_p8)
         fast_a9 = Activation('relu', name='fast_a9')(fast_c9)
         fast_n9 = BatchNormalization(axis=-1, name='fast_n9')(fast_a9)

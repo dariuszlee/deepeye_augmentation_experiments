@@ -4,6 +4,7 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from numpy.random import seed
 from scipy import interpolate
 from scipy.spatial import distance
 from sklearn import metrics
@@ -52,13 +53,16 @@ def avg_fnr_fpr_curve(
 
     tprs_list = []
     aucs = []
+    audets = [] 
     for i in range(0, len(fprs)):
         fpr = fprs[i]
         fnr = 1 - tprs[i]
 
         tprs_list.append(interpolate.interp1d(fpr, fnr))
         aucs.append(metrics.auc(fprs[i], tprs[i]))
+        audets.append(metrics.auc(fpr, fnr))
     aucs = np.array(aucs)
+    audets = np.array(audets)
     x = np.linspace(0, 1, plot_points)
     if starting_point is not None:
         x = x[x > starting_point]
@@ -74,11 +78,19 @@ def avg_fnr_fpr_curve(
     ys = np.vstack([f(x) for f in tprs_list])
     ys_mean = ys.mean(axis=0)
     ys_std = ys.std(axis=0) / np.sqrt(len(fprs))
-    cur_label = label
+
+    distances = np.abs(ys_mean - x)
+    min_distance_idx = np.argmin(distances)
+    cur_label = str(label)
     if plot_statistics:
-        cur_label += r' (AUC={} $\pm$ {})'.format(
-            np.round(np.mean(aucs), 4),
-            np.round(np.std(aucs), 4),
+        # cur_label += r' (AUC={} $\pm$ {})'.format(
+        #     np.round(np.mean(aucs), 4),
+        #     np.round(np.std(aucs), 4),
+        # )
+        cur_label += f' EER={ys_mean[min_distance_idx]} '
+        cur_label += r' (AUDET={} $\pm$ {})'.format(
+            np.round(np.mean(audets), 4),
+            np.round(np.std(audets), 4),
         )
     plt.plot(x, ys_mean, label=cur_label)
     plt.fill_between(x, ys_mean - ys_std, ys_mean + ys_std, alpha=0.2)
@@ -97,6 +109,7 @@ def avg_fnr_fpr_curve(
     elif setting == 'identification':
         plt.xlabel('FPIR', fontsize=fontsize)
         plt.ylabel('FNIR', fontsize=fontsize)
+    # plt.ticklabel_format(useOffset=False, style='plain')
 
     plt.grid('on')
     if title is not None:
@@ -489,6 +502,15 @@ def evaluate_create_test_embeddings(
     
     # clear tensorflow session
     tf.keras.backend.clear_session()
+
+    # Set Seeds
+    seed(42)
+    # select graphic card
+    tf_config = tf.compat.v1.ConfigProto(log_device_placement=True)
+    tf_config.gpu_options.per_process_gpu_memory_fraction = 0.5
+    tf_config.gpu_options.allow_growth = True
+    tf_session = tf.compat.v1.Session(config=tf_config)
+    tf.random.set_seed(42)
     
     if batch_size != -1:
         model_conf['batch_size'] = batch_size
@@ -497,7 +519,6 @@ def evaluate_create_test_embeddings(
     conf = configuration.load_config(model_conf)
 
     
-
     # encode label
     le = LabelEncoder()
     le.fit(Y_train[:, Y_columns['subId']])

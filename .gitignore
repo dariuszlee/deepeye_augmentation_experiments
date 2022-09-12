@@ -1,0 +1,11 @@
+# Data and models
+Data/
+trained_models/
+
+# Build and temporary files
+.jukit/
+__pycache__/
+*.pkl
+
+.venv
+.ipynb_checkpoints/

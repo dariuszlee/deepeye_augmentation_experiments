@@ -1,9 +1,10 @@
-anaconda-client==1.7.2
-anaconda-navigator==1.10.0
-anaconda-project==0.8.3
-conda==4.9.2
-conda-build==3.20.5
-conda-verify==3.4.2
+# python3.8 works for me
+# anaconda-client==1.7.2
+# anaconda-navigator==1.10.0
+# anaconda-project==0.8.3
+# conda==4.9.2
+# conda-build==3.20.5
+# conda-verify==3.4.2
 json5==0.9.5
 jupyter==1.0.0
 jupyter-core==4.6.3
@@ -17,3 +18,6 @@ scikit-image==0.17.2
 tensorboard==2.4.1
 tensorboard-plugin-wit==1.8.0
 tensorflow==2.4.1
+protobuf==3.20.0
+matplotlib==3.5.3
+tqdm==4.64.1
