@@ -1,4 +1,5 @@
 import os
+from DataAugmentation.data_augmentation import augment_all_in_place
 
 import tensorflow
 import tensorflow as tf
@@ -16,10 +17,51 @@ from tensorflow.keras.layers import Layer
 from tensorflow.keras.models import clone_model
 from tensorflow.keras.models import Model
 
+# Augmentor
+from tensorflow.keras.utils import Sequence
+import numpy as np
+
 GLOBAL_SEED=42
 
-class DeepEyedentification2Diffs():
 
+class AugmentGeneratorDoubler(Sequence):
+    def __init__(self, x_in, y_in, batch_size, augmentation, single_input=True, shuffle=True):
+        # Initialization
+        self.single_input = single_input
+        self.augmentation = augmentation
+        self.batch_size = batch_size
+        self.original_length = len(x_in)
+        self.datalen = len(x_in) * (self.augmentation['perc_augmentation'] + 1)
+        self.indexes = np.arange(self.datalen)
+
+        self.shuffle = shuffle
+        self.x = np.zeros((self.datalen, x_in.shape[1], x_in.shape[2]))
+        self.x[0:x_in.shape[0], :, :] = x_in
+        self.y = np.zeros((self.datalen, y_in.shape[1]))
+        self.y[0:y_in.shape[0], :] = y_in
+        self.on_epoch_end()
+
+    def __getitem__(self, index):
+        # get batch indexes from shuffled indexes
+        batch_indexes = self.indexes[index*self.batch_size:(index + 1) * self.batch_size]
+        x_batch = self.x[batch_indexes].copy()
+        y_batch = self.y[batch_indexes].copy()
+        if self.single_input:
+            return [x_batch, x_batch[:, :, [0,1]] - x_batch[:, :, [2,3]]], y_batch
+        return [x_batch, x_batch[:, :, [0,1]] - x_batch[:, :, [2,3]],
+                x_batch, x_batch[:, :, [0,1]] - x_batch[:, :, [2,3]]], y_batch
+    
+    def __len__(self):
+        return self.datalen // self.batch_size
+
+    def on_epoch_end(self):
+        augment_all_in_place(self.x, self.y, self.augmentation, self.original_length)
+        self.indexes = np.arange(self.datalen)
+        if self.shuffle:
+            np.random.shuffle(self.indexes)
+        
+
+class DeepEyedentification2Diffs():
     def __init__(
         self, config_slow, config_fast, config, seq_len, channels, n_classes,
         zscore_mean_vel_diffs, zscore_std_vel_diffs,
@@ -39,7 +81,7 @@ class DeepEyedentification2Diffs():
         self.config = config
 
     def train(
-        self, X_vel, X_diff_vel, y, train_idx, validation_idx,
+        self, X_vel, X_diff_vel, y, train_idx, validation_idx, augmentation_type,
         pretrained_weights_slow_path=None,
         pretrained_weights_fast_path=None,
     ):
@@ -51,11 +93,15 @@ class DeepEyedentification2Diffs():
         callbacks = [EarlyStopping(monitor='val_loss', patience=10)]
 
         # pretrain slow and fast subnet independently
+        data_generator = AugmentGeneratorDoubler(X_vel[train_idx, :],
+                                          y[train_idx, :],
+                                          self.config_slow.batch_size,
+                                          augmentation_type)
         if not pretrained_weights_slow_path:
             tf.keras.backend.clear_session()
             print('Train slow subnet...')
             self.slow_subnet.fit(
-                [X_vel[train_idx, :], X_diff_vel[train_idx, :]], y[train_idx, :],
+                data_generator,
                 validation_data=(
                     [
                         X_vel[validation_idx, :], X_diff_vel[validation_idx, :],
@@ -82,16 +128,20 @@ class DeepEyedentification2Diffs():
             )
 
         if not pretrained_weights_fast_path:
+            # data_generator = AugmentGeneratorDoubler(X_vel[train_idx, :],
+            #                                   y[train_idx, :],
+            #                                   self.config_fast.batch_size,
+            #                                   augmentation_type)
             tf.keras.backend.clear_session()
             print('Train fast subnet...')
             self.fast_subnet.fit(
-                [X_vel[train_idx, :], X_diff_vel[train_idx, :]], y[train_idx, :],
+                data_generator,
                 validation_data=(
                     [
                         X_vel[validation_idx, :], X_diff_vel[validation_idx, :],
                     ], y[validation_idx, :],
                 ),
-                shuffle=True,
+                shuffle=True, # Shuffling done in generator
                 batch_size=self.config_fast.batch_size,
                 epochs=self.config.epochs,
                 callbacks=callbacks,
@@ -129,12 +179,14 @@ class DeepEyedentification2Diffs():
         # then train joint architecture with frozen subnet weights
         print('Train merged...')
 
+        # data_generator = AugmentGeneratorDoubler(X_vel[train_idx, :],
+        #                                   y[train_idx, :],
+        #                                   self.config.batch_size,
+        #                                   augmentation_type,
+        #                                   single_input=False)
+        data_generator.single_input = False
         history_merged_net = self.model.fit(
-            [
-                X_vel[train_idx, :], X_diff_vel[train_idx, :],
-                X_vel[train_idx, :], X_diff_vel[train_idx, :],
-            ],
-            y[train_idx, :],
+            data_generator,
             validation_data=(
                 [
                     X_vel[validation_idx, :], X_diff_vel[validation_idx, :],
@@ -142,7 +194,7 @@ class DeepEyedentification2Diffs():
                 ],
                 y[validation_idx, :],
             ),
-            shuffle=True,
+            shuffle=True, # Shuffling done in generator
             batch_size=self.config.batch_size,
             epochs=self.config.epochs,
             callbacks=callbacks,
@@ -657,3 +709,24 @@ class ZscoreNormalizationLayer(Layer):
         }
         base_config = super().get_config()
         return dict(list(base_config.items()) + list(config.items()))
+
+
+if __name__ == "__main__":
+    train_data = np.load('Data/train_data.npz')
+    test_data = np.load('Data/test_data.npz')
+    X_train = train_data['X_train']
+    Y_train = train_data['Y_train']
+    batch_size = 32
+    for _ in range(20):
+        generator = AugmentGeneratorDoubler(X_train, Y_train, batch_size, {'jitter': 0.001, 'perc_augmentation': 3 }, single_input=True, shuffle=True)
+        # generator.on_epoch_end()
+        generator = None
+
+        generator2 = AugmentGeneratorDoubler(X_train, Y_train, batch_size, {'jitter': 0.001, 'perc_augmentation': 3 }, single_input=True, shuffle=True)
+        # generator2.on_epoch_end()
+        generator2 = None
+
+        generator3 = AugmentGeneratorDoubler(X_train, Y_train, batch_size, {'jitter': 0.001, 'perc_augmentation': 3 }, single_input=True, shuffle=True)
+        # generator3.on_epoch_end()
+        generator3 = None
+    

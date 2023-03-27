@@ -498,7 +498,8 @@ def evaluate_create_test_embeddings(
     X_test,
     Y_test,
     Y_columns,
-    batch_size = 64):
+    batch_size = 64,
+    augmentation_type=None):
     
     # clear tensorflow session
     tf.keras.backend.clear_session()
@@ -575,6 +576,9 @@ def evaluate_create_test_embeddings(
     cur_hist = deepeye.train(
         X_train, X_diffs_train, y_train,
         train_idx=train_index, validation_idx=val_index,
+        augmentation_type=augmentation_type,
+        # pretrained_weights_fast_path="trained_models/",
+        # pretrained_weights_slow_path="trained_models/"
     )
     print('done.')
 
@@ -595,12 +599,15 @@ def evaluate_create_test_embeddings(
 
     embeddings_fast_subnet_all = embedding_fast_subnet.predict(
         [X_test, X_diffs_test],
+        batch_size=8
     )
     embeddings_slow_subnet_all = embedding_slow_subnet.predict(
         [X_test, X_diffs_test],
+        batch_size=8
     )
     embeddings_deepeye_all = embedding_deepeye.predict(
         [[X_test, X_diffs_test], [X_test, X_diffs_test]],
+        batch_size=8
     )
 
     embeddings_concatenated_all = np.hstack([
